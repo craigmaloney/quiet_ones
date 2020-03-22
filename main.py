@@ -2,14 +2,13 @@ import os
 import slack
 from datetime import datetime
 from collections import Counter
+import csv
 
 THRESHOLD = 3
 
 
 def main():
 
-    oldest = 0  # seconds since the Epoch
-    latest = int((datetime.now() - datetime(1970, 1, 1)).total_seconds())
     client = slack.WebClient(token=os.environ['SLACK_API_TOKEN'])
     users_list = client.users_list()
     users = {}
@@ -32,15 +31,19 @@ def main():
             continue
         client.conversations_join(channel=channel['id'])
 
-        for history in client.conversations_history(channel=channel['id']):
+        for history in client.conversations_history(channel=channel['id'], limit=200):
             for message in history['messages']:
                 if 'user' in message and message['user'] in users:
                     posts_by_user[users[message['user']]] += 1
 
     posts_by_user_less_than_threshold = \
         Counter({k: count for k, count in posts_by_user.items() if count <= THRESHOLD})
-    for user, count in posts_by_user_less_than_threshold.items():
-        print(user, 'posted', count, 'messages')
+    with open('quiet_ones.csv', 'w') as csvfile:
+        field_names = ['username', 'count']
+        writer = csv.DictWriter(csvfile, fieldnames=field_names, dialect='excel')
+        writer.writeheader()
+        for user, count in posts_by_user_less_than_threshold.items():
+            writer.writerow({'username': user, 'count': count})
 
 
 if __name__ == '__main__':
