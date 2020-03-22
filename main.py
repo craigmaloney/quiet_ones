@@ -21,8 +21,9 @@ def main():
     for user in users_list['members']:
         if not(user['deleted'] and user['is_bot']):
             users[user['id']] = "{name} ({email})".format(
-                    name=user['real_name'],
+                    name=user['profile'].get('real_name'),
                     email=user['profile'].get('email'))
+            posts_by_user[users[user['id']]] = 0
 
     for channel in channels_list['channels']:
         if channel['is_archived'] is True:
@@ -31,7 +32,8 @@ def main():
         history = client.conversations_history(channel=channel['id'], oldest=oldest, latest=latest)
 
         for message in history['messages']:
-            posts_by_user[users[message['user']]] += 1
+            if 'user' in message:
+                posts_by_user[users[message['user']]] += 1
 
     posts_by_user_less_than_threshold = \
         Counter({k: count for k, count in posts_by_user.items() if count <= THRESHOLD})
